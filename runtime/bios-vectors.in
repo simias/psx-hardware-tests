@@ -1,0 +1,9 @@
+# List of BIOS functions used to generate the ASM interface code.
+
+# Function,                   Vector, Entry
+
+printf,                       0xa0,   0x3f
+
+gpu_command_word,             0xa0,   0x49
+gpu_command_word_and_params,  0xa0,   0x4a
+gpu_sync,                     0xa0,   0x4e
