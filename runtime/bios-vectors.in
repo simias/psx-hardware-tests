@@ -4,6 +4,8 @@
 
 printf,                       0xa0,   0x3f
 
+gpu_sync,                     0xa0,   0x4e
 gpu_command_word,             0xa0,   0x49
 gpu_command_word_and_params,  0xa0,   0x4a
-gpu_sync,                     0xa0,   0x4e
+gpu_gp1_command_word,         0xa0,   0x48
+gpu_get_status,               0xa0,   0x4d
