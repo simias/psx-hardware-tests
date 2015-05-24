@@ -21,6 +21,7 @@ BEGIN {
 	gsub(/^[ \t]+/, "", entry)
 
 	printf("\n")
+	printf(".section .text.%s\n", name)
 	printf(".global %s\n", name)
 	printf(".type %s, function\n", name)
 	printf("\n")
