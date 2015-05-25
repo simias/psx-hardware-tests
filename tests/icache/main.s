@@ -6,7 +6,9 @@
 .global main
 .type main, function
 
-/* Output on the real console:
+/* Test instruction cache line fetch behaviour.
+ *
+ * Output on the real console:
  *
  *   Cacheline: 0x00000000 0x03e00008 0x00000000 0xbadc0ffe
  *   Cacheline: 0x00000000 0x00000000 0x00000000 0x00000000
