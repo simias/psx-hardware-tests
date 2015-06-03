@@ -1,0 +1,5 @@
+NAME = load_delay_override
+
+SRC = main.s
+
+include ../test_common.mk

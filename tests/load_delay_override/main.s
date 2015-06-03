@@ -6,10 +6,10 @@
 .global main
 .type main, function
 
-/* Test the BIOS delay slots
+/* Test modifying a target register inside the load delay slot
  *
  * Output on the real console:
- *    Value in delay slot: 01234567
+ *    Value after load+move: 01234567
  *
  * Return 0 if we get the expected value, 1 otherwise.
  */
@@ -21,18 +21,19 @@ main:
 	sw    $s0, 20($sp)
 	move  $fp, $sp
 
-	/* Put a test value in $t0 */
+	/* Put a magic number in $s0 */
 	li    $s0, 0x01234567
-	move  $t0, $s0
-	la    $t1, test_word
+	la    $t0, test_word
 
-	/* Load test_word into $t0 and save its value in the load
-	 * delay slot */
-	lw    $t0, 0($t1)
-	move  $a1, $t0
+	move  $a1, $zero
 
-	/* The value shouldn't have changed in the slot so s0 should
-	 * be 0 after the xor */
+	/* Load test_word into $t0 and then change its value in the
+	 * load delay slot */
+	lw    $a1, 0($t0)
+	move  $a1, $s0
+
+	/* The value of the load should have been overriden by the
+	 * move even though it took place in the delay slot */
 	xor  $s0, $s0, $a1
 
 	/* Display the value of $t0 during the delay slot */
@@ -40,7 +41,7 @@ main:
 	jal   bios_printf
 	nop
 
-	/* Set the return value*/
+	/* Set the return value */
 	sltu  $v0, $zero, $s0
 
 	move  $sp, $fp
@@ -53,7 +54,7 @@ main:
 .data
 
 display_msg:
-.string "Value in delay slot: %08x\n"
+.string "Value after load+move: %08x\n"
 
 test_word:
 .word 0xbadbaaad
