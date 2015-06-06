@@ -6,10 +6,11 @@
 .global main
 .type main, function
 
-/* Test the load delay slots
+/* Test the MFC load delay slots. MFC instructions behave like memory
+ * loads and take one cycle to set the value of the target register.
  *
  * Output on the real console:
- *    Value in delay slot: 01234567
+ *    Value in MFC delay slot: 01234567
  *
  * Return 0 if we get the expected value, 1 otherwise.
  */
@@ -24,11 +25,10 @@ main:
 	/* Put a test value in $t0 */
 	li    $s0, 0x01234567
 	move  $t0, $s0
-	la    $t1, test_word
 
-	/* Load test_word into $t0 and save its value in the load
+	/* Load SR into $t0 and save its value in the load
 	 * delay slot */
-	lw    $t0, 0($t1)
+	mfc0  $t0, $12
 	move  $a1, $t0
 
 	/* The value shouldn't have changed in the slot so s0 should
@@ -53,7 +53,4 @@ main:
 .data
 
 display_msg:
-.string "Value in delay slot: %08x\n"
-
-test_word:
-.word 0xbadbaaad
+.string "Value in MFC delay slot: %08x\n"
