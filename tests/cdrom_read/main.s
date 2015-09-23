@@ -69,9 +69,9 @@ main:
 	sb    $t2, 3($s0)
 
 	/* Set loc */
-	li    $a0, 0
-	li    $a1, 2
-	li    $a2, 4
+	li    $a0, 0x00
+	li    $a1, 0x02
+	li    $a2, 0x25
 	jal   set_loc
 	nop
 
@@ -88,34 +88,11 @@ main:
 	nop
 
 	/* Dump sector data */
-	li   $s0, 0
-	la   $s1, sector_buffer
-
-1:
-	lbu   $a1, 0($s1)
-	la    $a0, display_byte
-	jal   bios_printf
-	nop
-
-	addiu $s0, 1
-	addiu $s1, 1
-
-	/* Display 32 bytes per line */
-	andi  $t0, $s0, 0x1f
-	bnez  $t0, 1b
-	nop
-
-	/* Display newline */
-	la    $a0, newline
-	jal   bios_printf
-	nop
-
-	li    $t0, 2048
-	bne   $s0, $t0, 1b
+	jal   print_sector
 	nop
 
 	/* Set return value */
-	/*li  $v0, 0*/
+	li  $v0, 0
 
 	move  $sp, $fp
 	lw    $ra, 28($sp)
@@ -379,10 +356,96 @@ read_sector:
 	jr    $ra
 	addiu $sp, 32
 
+/* void print_sector(void) */
+.type print_sector, function
+
+print_sector:
+	addiu $sp, -32
+	sw    $ra, 28($sp)
+	sw    $fp, 24($sp)
+	sw    $s1, 20($sp)
+	sw    $s0, 16($sp)
+	move  $fp, $sp
+
+	/* Dump sector in hex */
+	li   $s0, 0
+	la   $s1, sector_buffer
+1:
+	lbu   $a1, 0($s1)
+	la    $a0, display_byte
+	jal   bios_printf
+	nop
+
+	addiu $s0, 1
+	addiu $s1, 1
+
+	/* Display 32 bytes per line */
+	andi  $t0, $s0, 0x1f
+	bnez  $t0, 1b
+	nop
+
+	/* Display newline */
+	la    $a0, newline
+	jal   bios_printf
+	nop
+
+	li    $t0, 2048
+	bne   $s0, $t0, 1b
+	nop
+
+	/* Dump sector data in ascii */
+	li   $s0, 0
+	la   $s1, sector_buffer
+1:
+	lbu   $a1, 0($s1)
+	/* Check if char is printable, i.e. in the range [0x20; 0x7e]*/
+	li    $t0, 0x1f
+	sltu  $t0, $t0, $a1
+	sltiu $t1, $a1, 0x7f
+	beq   $t0, $t1, 2f
+	nop
+
+	/* If we end up here we have a non printable character,
+	 * replace with '.' */
+	li    $a1, 0x2e
+
+2:
+	la    $a0, display_char
+	jal   bios_printf
+	nop
+
+	addiu $s0, 1
+	addiu $s1, 1
+
+	/* Display 32 bytes per line */
+	andi  $t0, $s0, 0x1f
+	bnez  $t0, 1b
+	nop
+
+	/* Display newline */
+	la    $a0, newline
+	jal   bios_printf
+	nop
+
+	li    $t0, 2048
+	bne   $s0, $t0, 1b
+	nop
+
+	move  $sp, $fp
+	lw    $ra, 28($sp)
+	lw    $fp, 24($sp)
+	lw    $s1, 20($sp)
+	lw    $s0, 16($sp)
+	jr    $ra
+	addiu $sp, 32
+
 .data
 
 display_byte:
 .string "%02x "
+
+display_char:
+.string "%c"
 
 newline:
 .string "\n"
