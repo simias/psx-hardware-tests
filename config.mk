@@ -9,10 +9,13 @@ CROSS := /opt/psx-tools/bin/mipsel-unknown-elf-
 LD := $(CROSS)ld
 AS := $(CROSS)as
 AR := $(CROSS)ar
+CC := $(CROSS)gcc
 
 AWK := awk
 
 ASFLAGS := -O2 -mtune=R2000 -mips1 -no-mips16 --fatal-warnings
+
+CFLAGS := -g -O2 -Wall -Werror -march=mips1 -msoft-float -mno-gpopt -nostdlib -I $(SDK_ROOT)/runtime/
 
 BUILD_DIR := $(SDK_ROOT)/build
 

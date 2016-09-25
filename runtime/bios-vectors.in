@@ -11,3 +11,5 @@ gpu_command_word,             0xa0,   0x49
 gpu_command_word_and_params,  0xa0,   0x4a
 gpu_gp1_command_word,         0xa0,   0x48
 gpu_get_status,               0xa0,   0x4d
+
+kernel_redirect,              0xc0,   0x1b
