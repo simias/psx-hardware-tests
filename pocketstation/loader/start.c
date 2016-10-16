@@ -1,31 +1,46 @@
 #include "utils.h"
 #include "clock.h"
+#include "lcd.h"
 #include "pocketstation.h"
 
 int main(void);
 
 /* Linker symbols */
-extern char _sbss[];
-extern char _ebss[];
-extern const char _ldata[];
-extern char _sdata[];
-extern char _edata[];
+extern uint8_t _sbss[];
+extern uint8_t _ebss[];
+extern uint8_t _sdata[];
+extern uint8_t _edata[];
+extern const uint16_t _ldata[];
+
+uint32_t glbl;
+uint32_t glbl2 = 42;
 
 /* Entry point */
 void _start() {
-  char *p;
-  const char *l;
+  uint8_t *p;
+  const uint16_t *l;
 
   /* 0-fill .bss */
   for (p = _sbss; p != _ebss; p++) {
     *p = 0;
   }
 
-  /* Copy .data */
+  /* Copy .data. We have to be careful because 8bit loads don't work
+     with the flash. In particular it means that it's probably a bad
+     idea to use a generic "memcpy" here, unless we're sure it never
+     uses 8bit reads. */
   for (p = _sdata, l = _ldata;
        p != _edata;
-       p++, l++) {
-    *p = *l;
+       l++) {
+    uint16_t d = *l;
+
+    *p++ = d;
+
+    if (p == _edata) {
+      break;
+    }
+
+    *p++ = d >> 8;
   }
 
   /* XXX Should we do something with main's return value? */

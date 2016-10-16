@@ -24,7 +24,7 @@ static void transfer() {
     }
   }
 
-  lcd_display(irq_input());
+  lcd_display(irq_input() | 0x10000000);
 
   /* Write to IOP STOP, stop sound? */
   write32(IOP_STOP, 0x20);
@@ -52,7 +52,7 @@ static void transfer() {
     }
   }
 
-  lcd_display(irq_input());
+  lcd_display(irq_input() | 0x20000000);
 
   write32(COM_CTRL2, 1);
 
@@ -109,19 +109,17 @@ int main() {
   /* Acknowledge all interrupts */
   irq_ack(IRQ_FIQ_ALL);
 
-  //clock_set_frequency(CLOCK_4MHZ);
+  clock_set_frequency(CLOCK_4MHZ);
+
+  while ((irq_input() & IRQ_BUTTON_ACTION) == 1) {
+    ;
+  }
 
   lcd_clear();
 
-  lcd_display(0xdeadbeef);
-
-  lcd_write_line(1, 0xffffffff);
-  lcd_write_line(2, 0xaaaaaaaa);
-  lcd_write_line(25, 0x55555555);
-
-  /* while ((irq_input() & IRQ_BUTTON_ACTION) == 0) { */
-  /*   transfer(); */
-  /* } */
+  while ((irq_input() & IRQ_BUTTON_ACTION) == 0) {
+    transfer();
+  }
 
   /* Busy delay */
   for (i = 0; i < 3000000; i++) {

@@ -46,19 +46,14 @@ void lcd_scroll(uint8_t lines) {
 
 /* Hexadecimal character font. Each character is 4x5 pixels.
  *
- * In order to save a bit of space I pack two characters in 5
- * bytes. For instance the character '2' is in the low nibbles of
- * hex_font[2][0..5] while '3' is in the high nibbles of the same
- * entries. */
-static const uint8_t hex_font[8][5] = {
-  { 0x4e, 0x6a, 0x4a, 0x4a, 0xee },
-  { 0xee, 0x88, 0xce, 0x82, 0xee },
-  { 0xe8, 0x2c, 0xea, 0x8e, 0xe8 },
-  { 0xee, 0x82, 0x4e, 0x4a, 0x4e },
-  { 0xee, 0xaa, 0xee, 0x8a, 0xee },
-  { 0x64, 0xaa, 0x6e, 0xaa, 0x6a },
-  { 0x6c, 0xa2, 0xa2, 0xa2, 0x6c },
-  { 0xee, 0x22, 0x66, 0x22, 0x2e },
+ * 8 characters are packed in each row, one in each nibble of the
+ * array.
+ *
+ * You can't make this array an u8 because FLASH doesn't support 8bit
+ * access. I found that out the hard way... */
+static const uint32_t hex_font[2][5] = {
+  { 0xeee8ee4e, 0x822c886a, 0x4eeace4a, 0x4a8e824a, 0x4ee8eeee },
+  { 0xee6c64ee, 0x22a2aaaa, 0x66a26eee, 0x22a2aa8a, 0x2e6c6aee },
 };
 
 /* Scroll the LCD and display a single u32 in a human-readable way */
@@ -74,9 +69,9 @@ void lcd_display(uint32_t val) {
     for (byte = 0; byte < 8; byte++) {
       unsigned nibble = (val >> (byte * 4)) & 0xf;
 
-      uint32_t c = hex_font[nibble / 2][line];
+      uint32_t c = hex_font[nibble / 8][line];
 
-      c = (c >> ((nibble & 1) * 4)) & 0xf;
+      c = (c >> ((nibble & 7) * 4)) & 0xf;
 
       pixels |= c << ((7 - byte) * 4);
     }

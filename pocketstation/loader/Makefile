@@ -20,7 +20,7 @@ SIZE := $(XCC)size
 
 # Change -marm to -mthumb to generate Thumb-1 machine code
 CFLAGS := -O2 -MMD -Wall -Wextra -march=armv4t -mcpu=arm7tdmi -msoft-float \
-          -nostdlib -mthumb-interwork -mthumb -ffunction-sections -fdata-sections
+          -nostdlib -mthumb-interwork -marm -ffunction-sections -fdata-sections
 LDFLAGS := --gc-sections --fatal-warnings
 
 DEP = $(OBJ:%.o=%.d)
