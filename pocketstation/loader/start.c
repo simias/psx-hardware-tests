@@ -1,8 +1,8 @@
 #include "utils.h"
+#include "clock.h"
 #include "pocketstation.h"
-#include "lcd.h"
 
-void main(void);
+int main(void);
 
 /* Linker symbols */
 extern char _sbss[];
@@ -28,6 +28,7 @@ void _start() {
     *p = *l;
   }
 
+  /* XXX Should we do something with main's return value? */
   main();
 
   /* We can't simply return to the GUI, the kernel doesn't setup a
@@ -59,7 +60,10 @@ void _start() {
 		    :
 		    : "r0", "cc");
 
-  /* Should not be reached */
+  /* Should not be reached. Set the clock to the lowest frequency,
+     just in case, might as well save some battery. */
+  clock_set_frequency(CLOCK_62_5KHZ);
+
   for (;;) {
   }
 }
@@ -87,6 +91,7 @@ const uint8_t _pksx_icon_[16 * 16 / 2] = {
 };
 
 /* Monochrome icon, 1bit per pixel */
+__attribute__ ((section (".header.mono_icon")))
 const uint32_t _pksx_mono_icon[] = {
   0xffffffff,
   0xfffffcff,

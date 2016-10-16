@@ -7,13 +7,13 @@
  * the framebuffer. */
 #define LCD_FRAMEBUFFER     (LCD_BASE + 0x100)
 
-static void write_line(uint8_t pos, uint32_t v) {
+void lcd_write_line(uint8_t pos, uint32_t v) {
   pos &= 31;
 
   write32(LCD_FRAMEBUFFER + pos * 4, v);
 }
 
-static uint32_t read_line(uint8_t pos) {
+uint32_t lcd_read_line(uint8_t pos) {
   pos &= 31;
 
   return read32(LCD_FRAMEBUFFER + pos * 4);
@@ -24,7 +24,7 @@ void lcd_clear(void) {
   int i;
 
   for (i = 0; i < 32; i++) {
-    write_line(i, 0);
+    lcd_write_line(i, 0);
   }
 }
 
@@ -36,10 +36,10 @@ void lcd_scroll(uint8_t lines) {
     unsigned i;
 
     for (i = lines; i < 32; i++) {
-      uint32_t l = read_line(i);
+      uint32_t l = lcd_read_line(i);
 
-      write_line(i, 0);
-      write_line(i - lines, l);
+      lcd_write_line(i, 0);
+      lcd_write_line(i - lines, l);
     }
   }
 }
@@ -74,13 +74,13 @@ void lcd_display(uint32_t val) {
     for (byte = 0; byte < 8; byte++) {
       unsigned nibble = (val >> (byte * 4)) & 0xf;
 
-      uint32_t c = (uint32_t)hex_font[nibble / 2][line];
+      uint32_t c = hex_font[nibble / 2][line];
 
       c = (c >> ((nibble & 1) * 4)) & 0xf;
 
       pixels |= c << ((7 - byte) * 4);
     }
 
-    write_line(26 + line, pixels);
+    lcd_write_line(26 + line, pixels);
   }
 }
