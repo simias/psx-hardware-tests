@@ -18,7 +18,9 @@ AR := $(CROSS)ar
 OBJCPY := $(XCC)objcopy
 SIZE := $(XCC)size
 
-CFLAGS := -O2 -MMD -Wall -march=armv4t -mcpu=arm7tdmi -msoft-float -nostdlib
+# Change -marm to -mthumb to generate Thumb-1 machine code
+CFLAGS := -O2 -MMD -Wall -march=armv4t -mcpu=arm7tdmi -msoft-float \
+          -nostdlib -mthumb-interwork -marm
 LDFLAGS := --gc-sections --fatal-warnings
 
 DEP = $(OBJ:%.o=%.d)
@@ -28,8 +30,7 @@ all: loader.mcr
 
 loader.mcr: loader.bin
 	$(PSX_MCTOOL) format $@
-	$(PSX_MCTOOL) load-raw-file $@ $^ "$(FILE_NAME)"
-	$(PSX_MCTOOL) list-files $@
+	$(PSX_MCTOOL) load-raw-file $@ $^ $(FILE_NAME)
 
 loader.bin: loader.elf
 	$(SIZE) $^
