@@ -1,0 +1,180 @@
+TMP_DIR := /tmp
+
+# Where the source will be downloaded and built
+WORK_DIR := $(TMP_DIR)/psx-toochain
+
+# Where the PlayStation (MIPS I) toochain will be installed
+PSX_PREFIX := /opt/psx-tools
+# Where the PocketStation (ARMv4t) toolchain will be installed
+PKSX_PREFIX := /opt/pksx-tools
+
+MAKE_FLAGS := -j4
+
+WGET := wget
+
+# Should output the contents of the file to stdout
+WGET_FLAGS := -O -
+
+TAR := tar
+
+# Used to "make install". Not needed if additional priviledges are not
+# needed to install in the prefix.
+SUDO := sudo
+
+# Version of the various tools we'll be using
+BINUTILS_VERSION := 2.27
+GCC_VERSION := 6.2.0
+GDB_VERSION := 7.12
+
+MIRROR := https://ftp.gnu.org/gnu
+
+BINUTILS_MIRROR := $(MIRROR)/binutils/binutils-$(BINUTILS_VERSION).tar.bz2
+BINUTILS_SRC = $(WORK_DIR)/binutils-$(BINUTILS_VERSION)
+BINUTILS_CONFIG = $(BINUTILS_SRC)/configure
+
+GCC_MIRROR := $(MIRROR)/gcc/gcc-$(GCC_VERSION)/gcc-$(GCC_VERSION).tar.bz2
+GCC_SRC = $(WORK_DIR)/gcc-$(GCC_VERSION)
+GCC_CONFIG = $(GCC_SRC)/configure
+
+GDB_MIRROR := $(MIRROR)/gdb/gdb-$(GDB_VERSION).tar.xz
+GDB_SRC = $(WORK_DIR)/gdb-$(GDB_VERSION)
+GDB_CONFIG = $(GDB_SRC)/configure
+
+.PHONY: help
+help:
+	@echo "If you want to build the PlayStation toolchain (MIPS I) use:"
+	@echo "  make -f Makefile.toolchain playstation"
+	@echo "If you want to build the PocketStation (ARMv4t) toolchain use:"
+	@echo "  make -f Makefile.toolchain pocketstation"
+	@echo
+	@echo "These commands will build binutils, GCC and GDB for the target."
+	@echo
+	@echo "Configuration (see Makefile.toolchain for more details):"
+	@echo "WORK_DIR    = $(WORK_DIR)"
+	@echo "PSX_PREFIX  = $(PSX_PREFIX)"
+	@echo "PKSX_PREFIX = $(PKSX_PREFIX)"
+	echo "BINUTILS_CONFIG = $(BINUTILS_CONFIG)"
+
+
+#########################
+# PlayStation toolchain #
+#########################
+
+PSX_TARGET = mipsel-unknown-elf
+
+PSX_AS  = $(PSX_PREFIX)/bin/$(PSX_TARGET)-as
+PSX_GCC = $(PSX_PREFIX)/bin/$(PSX_TARGET)-gcc
+PSX_GDB = $(PSX_PREFIX)/bin/$(PSX_TARGET)-db
+
+.PHONY: playstation
+playstation: $(PSX_AS) $(PSX_GCC) $(PSX_GDB)
+
+PSX_BINUTILS_BUILD = "$(WORK_DIR)/psx-binutils-build"
+
+PSX_BINUTILS_FLAGS = --target=$(PSX_TARGET) --prefix=$(PSX_PREFIX) \
+                      --with-float=soft --enable-softfloat
+
+$(PSX_AS): $(BINUTILS_CONFIG)
+	mkdir -p $(PSX_BINUTILS_BUILD)
+	cd $(PSX_BINUTILS_BUILD) && \
+	$(BINUTILS_CONFIG) $(PSX_BINUTILS_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+PSX_GCC_BUILD = "$(WORK_DIR)/psx-gcc-build"
+
+PSX_GCC_FLAGS = --target=$(PSX_TARGET) --prefix=$(PSX_PREFIX) \
+                --with-float=soft --enable-languages=c \
+                --disable-libada --disable-libssp
+
+$(PSX_GCC): $(GCC_CONFIG)
+	mkdir -p $(PSX_GCC_BUILD)
+	cd $(PSX_GCC_BUILD) && \
+	$(GCC_CONFIG) $(PSX_GCC_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+
+PSX_GDB_BUILD = "$(WORK_DIR)/psx-gdb-build"
+
+PSX_GDB_FLAGS = --target=$(PSX_TARGET)  --prefix=$(PSX_PREFIX) \
+                 --with-float=soft --enable-softfloat
+
+$(PSX_GDB): $(GDB_CONFIG)
+	mkdir -p $(PSX_GDB_BUILD)
+	cd $(PSX_GDB_BUILD) && \
+	$(GDB_CONFIG) $(PSX_GDB_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+###########################
+# PocketStation toolchain #
+###########################
+
+PKSX_TARGET = arm-none-eabi
+
+PKSX_AS  = $(PKSX_PREFIX)/bin/$(PKSX_TARGET)-as
+PKSX_GCC = $(PKSX_PREFIX)/bin/$(PKSX_TARGET)-gcc
+PKSX_GDB = $(PKSX_PREFIX)/bin/$(PKSX_TARGET)-db
+
+.PHONY: pocketstation
+pocketstation: $(PKSX_AS) $(PKSX_GCC) $(PKSX_GDB)
+
+PKSX_BINUTILS_BUILD = "$(WORK_DIR)/pksx-binutils-build"
+
+PKSX_BINUTILS_FLAGS = --target=$(PKSX_TARGET) --prefix=$(PKSX_PREFIX) \
+                      --with-float=soft --enable-softfloat --enable-interwork \
+                      --enable-multilib
+
+$(PKSX_AS): $(BINUTILS_CONFIG)
+	mkdir -p $(PKSX_BINUTILS_BUILD)
+	cd $(PKSX_BINUTILS_BUILD) && \
+	$(BINUTILS_CONFIG) $(PKSX_BINUTILS_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+PKSX_GCC_BUILD = "$(WORK_DIR)/pksx-gcc-build"
+
+PKSX_GCC_FLAGS = --target=$(PKSX_TARGET) --prefix=$(PKSX_PREFIX) \
+                 --with-float=soft --enable-languages=c \
+                 --disable-libada --disable-libssp
+
+
+$(PKSX_GCC): $(GCC_CONFIG)
+	mkdir -p $(PKSX_GCC_BUILD)
+	cd $(PKSX_GCC_BUILD) && \
+	$(GCC_CONFIG) $(PKSX_GCC_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+
+PKSX_GDB_BUILD = "$(WORK_DIR)/pksx-gdb-build"
+
+PKSX_GDB_FLAGS = --target=$(PKSX_TARGET)  --prefix=$(PKSX_PREFIX) \
+                 --with-float=soft --enable-softfloat
+
+$(PKSX_GDB): $(GDB_CONFIG)
+	mkdir -p $(PKSX_GDB_BUILD)
+	cd $(PKSX_GDB_BUILD) && \
+	$(GDB_CONFIG) $(PKSX_GDB_FLAGS) && \
+	$(MAKE) $(MAKE_FLAGS) && \
+	sudo $(MAKE) install
+
+###################
+# Source download #
+###################
+
+$(BINUTILS_CONFIG):
+	mkdir -p $(BINUTILS_SRC)
+	$(WGET) $(WGET_FLAGS) $(BINUTILS_MIRROR) | \
+	$(TAR) -C $(BINUTILS_SRC) --strip-components=1 -xj
+
+$(GCC_CONFIG):
+	mkdir -p $(GCC_SRC)
+	$(WGET) $(WGET_FLAGS) $(GCC_MIRROR) | \
+	$(TAR) -C $(GCC_SRC) --strip-components=1 -xj
+
+$(GDB_CONFIG):
+	mkdir -p $(GDB_SRC)
+	$(WGET) $(WGET_FLAGS) $(GDB_MIRROR) | \
+	$(TAR) -C $(GDB_SRC) --strip-components=1 -xJ
