@@ -16,4 +16,6 @@ enum clock_frequency {
 
 void clock_set_frequency(enum clock_frequency);
 
+enum clock_frequency clock_get_frequency(void);
+
 #endif /* _CLOCK_H_ */

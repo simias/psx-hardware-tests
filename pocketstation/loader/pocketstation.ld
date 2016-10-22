@@ -34,7 +34,6 @@ SECTIONS
 	{
 		. = ALIGN(4);
 		*(.rodata*)
-		*(.bss*)
 
 		_ldata = .;
 	} > FLASH

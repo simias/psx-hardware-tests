@@ -1,6 +1,7 @@
 #include "lcd.h"
 #include "irq.h"
 #include "clock.h"
+#include "pocketstation.h"
 
 #define IOP_BASE   0x0d800000
 #define IOP_CTRL   (IOP_BASE + 0x00)
@@ -14,15 +15,66 @@
 #define COM_STAT2  (COM_BASE + 0x14)
 #define COM_CTRL2  (COM_BASE + 0x18)
 
-static void transfer() {
-  unsigned i;
-
-  /* Wait for docking signal */
-  while ((irq_input() & IRQ_DOCKED) == 0) {
-    if (irq_input() & IRQ_BUTTON_ACTION) {
-      return;
-    }
+void irq_handler(void) {
+  /* Check if the down button is pressed */
+  if (irq_input() & IRQ_BUTTON_DOWN) {
+    pksx_exit();
   }
+}
+
+static void wait_for_docking(void);
+static void transfer(void);
+
+int main() {
+  /* Mask all interrupts except for the down button (used to force
+     exit in irq_handler) */
+  irq_set_handler(irq_handler);
+  irq_set_mask(IRQ_BUTTON_DOWN);
+
+  /* Acknowledge all interrupts */
+  irq_ack(IRQ_FIQ_ALL);
+
+  clock_set_frequency(CLOCK_500KHZ);
+
+  lcd_clear();
+
+  wait_for_docking();
+
+  transfer();
+
+  /* Wait for button interrupt */
+  for (;;) {
+  }
+}
+
+
+static void wait_for_docking(void) {
+  uint32_t delay;
+
+  /* This code is taken from the kernel's docking interrupt. I think
+     it also wants to divide the delay by 2 if the clock is locked (or
+     something like that) but the code looks bogus so it always ends
+     up using this delay. */
+  delay = 32 << (int)clock_get_frequency();
+
+  do {
+    while ((irq_input() & IRQ_DOCKED) == 0) {
+      ;
+    }
+
+    /* Once we detect the docking we want to wait a bit in order to
+       debounce the signal */
+    while (delay--) {
+      nop();
+    }
+
+    /* Finally if the docking signal is not set after the debounce
+       period we ignore it and start again*/
+  } while ((irq_input() & IRQ_DOCKED) == 0);
+}
+
+static void transfer(void) {
+  unsigned i;
 
   lcd_display(irq_input() | 0x10000000);
 
@@ -100,31 +152,3 @@ static void transfer() {
   }
 }
 
-int main() {
-  unsigned i;
-
-  /* Mask all interrupts */
-  irq_set_mask(0);
-
-  /* Acknowledge all interrupts */
-  irq_ack(IRQ_FIQ_ALL);
-
-  clock_set_frequency(CLOCK_4MHZ);
-
-  while ((irq_input() & IRQ_BUTTON_ACTION) == 1) {
-    ;
-  }
-
-  lcd_clear();
-
-  while ((irq_input() & IRQ_BUTTON_ACTION) == 0) {
-    transfer();
-  }
-
-  /* Busy delay */
-  for (i = 0; i < 3000000; i++) {
-    nop();
-  }
-
-  return 0;
-}

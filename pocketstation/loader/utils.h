@@ -9,6 +9,8 @@ typedef unsigned int    size_t;
 
 #define ARRAY_SIZE(_a) (sizeof(_a) / sizeof(*(_a)))
 
+#define NULL ((void*)0)
+
 static inline void nop(void) {
   __asm__ __volatile__ ("nop");
 }

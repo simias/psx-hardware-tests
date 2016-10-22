@@ -46,4 +46,7 @@ struct pksx_mono_icon_desc {
   const uint32_t *data;
 };
 
+void pksx_exit(void);
+void pksx_reset(void);
+
 #endif /* _POCKETSTATION_H_ */

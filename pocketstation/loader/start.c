@@ -1,6 +1,6 @@
 #include "utils.h"
-#include "clock.h"
 #include "lcd.h"
+#include "irq.h"
 #include "pocketstation.h"
 
 int main(void);
@@ -16,7 +16,7 @@ uint32_t glbl;
 uint32_t glbl2 = 42;
 
 /* Entry point */
-void _start() {
+void _start(void) {
   uint8_t *p;
   const uint16_t *l;
 
@@ -46,15 +46,22 @@ void _start() {
   /* XXX Should we do something with main's return value? */
   main();
 
+  pksx_exit();
+
+  /* If this code is reached, something went very wrong. Maybe we
+     broke the kernel somehow? Although we'll be lucky if we return
+     here when the kernel is broken... */
+  pksx_reset();
+}
+
+void pksx_exit(void) {
   /* We can't simply return to the GUI, the kernel doesn't setup a
      return address for some reason. Instead we must use system calls
      to "execute" the GUI */
   register uint8_t cur_index __asm__ ("r0");
 
   __asm__ volatile ("swi 0x16" /* GetDirIndex */
-		    : "=r" (cur_index)
-		    :
-		    : "cc");
+		    : "=r" (cur_index));
 
   /* Prepare execute: 0x3x to enter the GUI in the file selection
      screen, where "x" should be the index of this program so that it
@@ -67,19 +74,39 @@ void _start() {
 
   __asm__ volatile ("swi 0x08" /* PrepareExecute */
 		    : "+r"(flag)
-		    : "r"(dir_index), "r"(param)
-		    : "cc");
+		    : "r"(dir_index), "r"(param));
 
   __asm__ volatile ("swi 0x09" /* DoExecute */
 		    :
 		    :
-		    : "r0", "cc");
+		    : "r0");
 
-  /* Should not be reached. Set the clock to the lowest frequency,
-     just in case, might as well save some battery. */
-  clock_set_frequency(CLOCK_62_5KHZ);
+}
 
+void pksx_reset(void) {
+  /* I want this method to work even if we've trashed the kernel
+     memory so instead of simply calling `SWI 0` directly I first
+     rewire the SWI handler to point to the kernel reset vector in
+     ROM, this way it should work no matter what. Privilege escalation
+     yo! */
+
+  /* Let's not get interrupted while we mess with the vectors */
+  irq_set_mask(0);
+  /* Just in case... This won't do anything if we're in user mode. */
+  irq_fiq_disable__priviledged();
+
+  /* SWI vector: ldr pc, [pc, 0x18] */
+  write32(0x08, 0xe59ff018);
+  /* Address of the reset vector in kernel ROM */
+  write32(0x28, 0x04000000);
+
+  /* Now reset should work. The parameter to the SWI is meaningless
+     here since we've hardwired the SWI handler to reset */
+  __asm__ volatile ("swi 0");
+
+  /* Should not be reached */
   for (;;) {
+    ;
   }
 }
 

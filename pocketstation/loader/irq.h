@@ -27,4 +27,8 @@ uint16_t irq_mask(void);
 void irq_set_mask(uint16_t);
 void irq_ack(uint16_t);
 
+void irq_set_handler(void (*)(void));
+
+void irq_fiq_disable__priviledged(void);
+
 #endif /* _IRQ_H_ */
