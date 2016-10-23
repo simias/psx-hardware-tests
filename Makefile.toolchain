@@ -53,8 +53,6 @@ help:
 	@echo "WORK_DIR    = $(WORK_DIR)"
 	@echo "PSX_PREFIX  = $(PSX_PREFIX)"
 	@echo "PKSX_PREFIX = $(PKSX_PREFIX)"
-	echo "BINUTILS_CONFIG = $(BINUTILS_CONFIG)"
-
 
 #########################
 # PlayStation toolchain #
