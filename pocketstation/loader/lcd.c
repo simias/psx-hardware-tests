@@ -2,6 +2,7 @@
 
 /* Start of the LCD memory area */
 #define LCD_BASE            0x0d000000U
+#define LCD_MODE            (LCD_BASE + 0x00)
 /* Offset of the first byte of the first line of the framebuffer. The
  * screen is 32x32 pixels, each pixel is mapped to a single bit in
  * the framebuffer. */
@@ -78,4 +79,13 @@ void lcd_display(uint32_t val) {
 
     lcd_write_line(26 + line, pixels);
   }
+}
+
+void lcd_rotate(bool rotate) {
+  uint32_t mode = read32(LCD_MODE);
+
+  mode &= ~0x80;
+  mode |= (uint32_t)rotate << 7;;
+
+  write32(LCD_MODE, mode);
 }

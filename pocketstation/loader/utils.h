@@ -51,4 +51,9 @@ static inline void write8(size_t addr, uint8_t val) {
   *p = val;
 }
 
+typedef _Bool bool;
+
+#define true  1
+#define false 0
+
 #endif /* _UTILS_H_ */

@@ -40,13 +40,14 @@ int main() {
 
   wait_for_docking();
 
+  lcd_rotate(true);
+
   transfer();
 
   /* Wait for button interrupt */
   for (;;) {
   }
 }
-
 
 static void wait_for_docking(void) {
   uint32_t delay;
