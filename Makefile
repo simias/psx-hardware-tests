@@ -2,6 +2,7 @@ include config.mk
 
 all:
 	$(MAKE_COMMAND) -C runtime
+	$(MAKE_COMMAND) -C libpsx
 	$(MAKE_COMMAND) -C tests
 
 clean:

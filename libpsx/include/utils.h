@@ -1,5 +1,5 @@
-#ifndef _RUNTIME_H_
-#define _RUNTIME_H_
+#ifndef _UTILS_H_
+#define _UTILS_H_
 
 typedef unsigned char   uint8_t;
 typedef unsigned short  uint16_t;
@@ -9,9 +9,12 @@ typedef unsigned int    size_t;
 
 #define ARRAY_SIZE(_a) (sizeof(_a) / sizeof(*(_a)))
 
-void bios_printf(const char *, ...)
-  __attribute__ ((format (printf, 1, 2)));
-void bios_gpu_sync(void);
+#define NULL ((void*)0)
+
+typedef _Bool bool;
+
+#define true  1
+#define false 0
 
 static inline void nop(void) {
   __asm__ __volatile__ ("nop");
@@ -57,4 +60,4 @@ static inline void write8(size_t addr, uint8_t val) {
   *p = val;
 }
 
-#endif /* _RUNTIME_H_ */
+#endif /* _UTILS_H_ */

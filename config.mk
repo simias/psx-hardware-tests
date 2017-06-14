@@ -6,16 +6,18 @@ SDK_ROOT := $(HOME)/src/psx-hardware-tests
 # Cross-compilation toolchain prefix
 CROSS := /opt/psx-tools/bin/mipsel-unknown-elf-
 
+CC := $(CROSS)gcc
 LD := $(CROSS)ld
 AS := $(CROSS)as
 AR := $(CROSS)ar
-CC := $(CROSS)gcc
 
 AWK := awk
 
-ASFLAGS := -O2 -mtune=R2000 -mips1 -no-mips16 --fatal-warnings
+ASFLAGS := -O2 -mtune=R2000 -mips1 -no-mips16 --fatal-warnings -msoft-float
 
-CFLAGS := -g -O2 -Wall -Werror -march=mips1 -msoft-float -mno-gpopt -nostdlib -I $(SDK_ROOT)/runtime/
+CFLAGS := -g -O2 -Wall -Werror -march=mips1 -msoft-float -mno-gpopt \
+          -nostdlib -I $(SDK_ROOT)/runtime/ -I $(SDK_ROOT)/libpsx/include/ \
+          -ffunction-sections -fdata-sections
 
 BUILD_DIR := $(SDK_ROOT)/build
 

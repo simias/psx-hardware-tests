@@ -1,4 +1,5 @@
-#include "runtime.h"
+#include "utils.h"
+#include "bios.h"
 
 void gpu_gp0(uint32_t cmd) {
   write32(0x1f801810, cmd);
