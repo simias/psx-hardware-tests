@@ -1,4 +1,4 @@
-SRC = irq.c joy_mc.c
+SRC = irq.c joy_mc.c mdec.c
 
 include ../config.mk
 
