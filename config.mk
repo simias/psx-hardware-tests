@@ -15,7 +15,7 @@ AWK := awk
 
 ASFLAGS := -O2 -mtune=R2000 -mips1 -no-mips16 --fatal-warnings -msoft-float
 
-CFLAGS := -g -O2 -Wall -Werror -march=mips1 -msoft-float -mno-gpopt \
+CFLAGS := -g -O2 -Wall -march=mips1 -msoft-float -mno-gpopt \
           -nostdlib -I $(SDK_ROOT)/runtime/ -I $(SDK_ROOT)/libpsx/include/ \
           -ffunction-sections -fdata-sections
 

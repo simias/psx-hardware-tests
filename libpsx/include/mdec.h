@@ -3,7 +3,7 @@
 
 #include "utils.h"
 
-
+uint32_t mdec_status(void);
 void mdec_reset(void);
 bool mdec_data_fifo_empty(void);
 bool mdec_cmd_fifo_full(void);
@@ -22,5 +22,11 @@ void mdec_decode(const uint16_t *data,
 		 unsigned depth,
 		 bool is_signed,
 		 bool bit15set);
+
+#define MDEC_CONTROL_DATA_IN_REQ_EN   (1UL << 30)
+#define MDEC_CONTROL_DATA_OUT_REQ_EN  (1UL << 29)
+
+void mdec_set_control(uint32_t ctrl);
+
 
 #endif /* _MDEC_H_ */

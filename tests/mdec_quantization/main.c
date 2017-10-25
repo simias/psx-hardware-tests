@@ -99,6 +99,12 @@ int main() {
 
   mdec_reset();
 
+  for (i = 0; i < 1000000; i++) {
+    nop();
+  }
+
+  mdec_set_control(MDEC_CONTROL_DATA_IN_REQ_EN | MDEC_CONTROL_DATA_OUT_REQ_EN);
+
   mdec_set_quant_table(quant_table, false);
 
   mdec_set_idct_table(idct_table);
@@ -113,6 +119,7 @@ int main() {
 
   for (i = 0;; i++) {
     bios_printf("%02d: 0x%08x\n", i, mdec_read_data());
+    bios_printf("%02d: %d\n", i, mdec_data_fifo_empty());
   }
 
   bios_printf("Done!\n");

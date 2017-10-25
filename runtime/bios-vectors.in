@@ -2,6 +2,7 @@
 
 # Function,                   Vector, Entry
 
+malloc,                       0xa0,   0x33
 printf,                       0xa0,   0x3f
 
 flush_cache,                  0xa0,   0x44

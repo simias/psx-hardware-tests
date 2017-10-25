@@ -1,5 +1,6 @@
 #include "mdec.h"
 #include "bios.h"
+#include "utils.h"
 
 #define MDEC_BASE        0x1f801820
 #define MDEC_COMMAND     (MDEC_BASE + 0x0)
@@ -11,12 +12,24 @@ void mdec_reset(void) {
   write32(MDEC_CONTROL, 1UL << 31);
 }
 
+uint32_t mdec_status(void) {
+  uint32_t status = read32(MDEC_STATUS);
+
+  bios_printf("status: 0x%08x\n", status);
+
+  return status;
+}
+
+void mdec_set_control(uint32_t ctrl) {
+  write32(MDEC_CONTROL, ctrl);
+}
+
 bool mdec_data_fifo_empty(void) {
-  return !!(read32(MDEC_STATUS) & 1UL << 31);
+  return !!(mdec_status() & 1UL << 31);
 }
 
 bool mdec_cmd_fifo_full(void) {
-  return !!(read32(MDEC_STATUS) & 1UL << 30);
+  return !!(mdec_status() & 1UL << 30);
 }
 
 void mdec_write_command(uint32_t cmd) {
