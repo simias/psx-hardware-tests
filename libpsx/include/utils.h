@@ -10,6 +10,8 @@ typedef signed int      int32_t;
 typedef _Bool           bool;
 typedef unsigned int    size_t;
 
+typedef void (*func_ptr_t)(void);
+
 #define ARRAY_SIZE(_a) (sizeof(_a) / sizeof(*(_a)))
 
 #define NULL ((void*)0)
@@ -63,7 +65,11 @@ static inline void write8(size_t addr, uint8_t val) {
   *p = val;
 }
 
+/* We use this instead of declaring the proper memset prototype, this
+   way we let the compiler do its magic and try to come up with an
+   optimized memset when possible. If it can't do it it'll generate an
+   actual call to the symbol "memset" so our implementation will be
+   called. */
 #define memset __builtin_memset
-#define memcpy __builtin_memcpy
 
 #endif /* _UTILS_H_ */

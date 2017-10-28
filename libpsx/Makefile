@@ -1,4 +1,4 @@
-SRC = irq.c joy_mc.c mdec.c gpu.c term.c
+SRC = irq.c joy_mc.c mdec.c gpu.c term.c utils.c
 
 include ../config.mk
 

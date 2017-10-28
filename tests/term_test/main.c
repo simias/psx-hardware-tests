@@ -5,9 +5,11 @@
 int main() {
     unsigned i;
 
-    bios_printf("start!\n");
-
     term_init(GPU_XRES_320, GPU_NTSC, GPU_INTERLACING_DISABLED, 100);
+
+    term_hook_bios_puchar();
+
+    bios_printf("Hello term\n");
 
     for (i = 0; i < 100000000; i++) {
         nop();

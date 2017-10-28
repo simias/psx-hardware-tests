@@ -39,31 +39,31 @@ const uint16_t font[(192 * 10) / 4] = {
     0x1011, 0x1010, 0x0101, 0x1101, 0x0111, 0x0100, 0x0011, 0x1110,
     0x0001, 0x0100, 0x0000, 0x0100, 0x1000, 0x0001, 0x0001, 0x0000,
     0x0011, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
-    0x0000, 0x0000, 0x0000, 0x0000, 0x1100, 0x1010, 0x0001, 0x0000,
+    0x0000, 0x0000, 0x0000, 0x0000, 0x1100, 0x1010, 0x0001, 0x1110,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0010, 0x0101, 0x1100, 0x0100, 0x1001, 0x0100, 0x0001, 0x0001,
     0x0010, 0x1010, 0x1111, 0x0100, 0x0011, 0x0111, 0x0100, 0x1010,
-    0x0110, 0x1011, 0x1101, 0x1110, 0x0101, 0x0010, 0x0001, 0x0001,
+    0x0110, 0x1011, 0x1101, 0x1110, 0x0101, 0x0010, 0x0001, 0x1001,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x1000, 0x1110, 0x0010, 0x1110, 0x1110, 0x1011, 0x0011, 0x0000,
     0x1011, 0x1010, 0x0111, 0x1011, 0x1101, 0x1110, 0x0010, 0x1111,
-    0x0110, 0x1011, 0x1010, 0x1010, 0x0111, 0x0010, 0x1111, 0x0001,
+    0x0110, 0x1011, 0x1010, 0x1010, 0x0111, 0x0010, 0x1111, 0x1001,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x1000, 0x0110, 0x0011, 0x1101, 0x1001, 0x1100, 0x0101, 0x0001,
     0x0111, 0x1010, 0x0110, 0x1011, 0x0011, 0x0111, 0x0100, 0x1010,
-    0x0110, 0x1111, 0x0010, 0x1101, 0x0100, 0x0010, 0x0101, 0x0000,
+    0x0110, 0x1111, 0x0010, 0x1101, 0x0100, 0x0010, 0x0101, 0x0010,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x1111, 0x1100, 0x0110, 0x1011, 0x0010, 0x0101, 0x1001,
     0x1010, 0x1110, 0x0110, 0x0101, 0x0001, 0x0110, 0x0010, 0x1110,
-    0x1011, 0x1110, 0x1101, 0x1101, 0x1101, 0x1010, 0x0001, 0x0000,
+    0x1011, 0x1110, 0x1101, 0x1101, 0x1101, 0x1010, 0x0001, 0x0110,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -169,6 +169,7 @@ struct {
     uint16_t cursor_pos;
     uint16_t buf_start;
     uint16_t buf_end;
+    uint8_t  cur_style;
 } term_context = {0};
 
 static const unsigned term_width[] = {
@@ -180,12 +181,11 @@ static const unsigned term_width[] = {
 };
 
 int term_init(enum gpu_xres xres,
-               enum gpu_vmode vmode,
-               enum gpu_interlacing interlacing,
-               unsigned long backbuffer_lines) {
+              enum gpu_vmode vmode,
+              enum gpu_interlacing interlacing,
+              unsigned long backbuffer_lines) {
 
-    unsigned i = 0;
-    const char *msg = "HELLO, WORLD! Emulation sure is fun.";
+    size_t buf_len;
 
     term_close();
 
@@ -208,42 +208,87 @@ int term_init(enum gpu_xres xres,
 
     term_context.buf_start = term_context.buf_end = 0;
 
-    bios_printf("%s: malloc %lu\n", __func__, term_context.buf_lines *
-                                        term_context.width_char *
-                                        sizeof(*term_context.char_buf));
+    buf_len = term_context.buf_lines * term_context.width_char;
+    buf_len *= sizeof(*term_context.char_buf);
 
-    term_context.char_buf = bios_malloc(term_context.buf_lines *
-                                        term_context.width_char *
-                                        sizeof(*term_context.char_buf));
+    term_context.char_buf = bios_malloc(buf_len);
 
     if (term_context.char_buf == NULL) {
         bios_printf("%s: malloc failed\n", __func__);
         return -1;
+
     }
+
+    memset(term_context.char_buf, 0, buf_len);
 
     term_gpu_init(xres, vmode, interlacing,
                   term_context.width_px, term_context.height_px);
 
-    for (i = 0; msg[i]; i++) {
-        char c = msg[i] - ' ';
-
-        unsigned tex_x = (c % 64) * 3;
-        unsigned tex_y = (c / 64) * 5;
-
-
-        gpu_draw_rect_raw_texture_opaque(i * 4, 20,
-                                         3, 5,
-                                         tex_x, tex_y,
-                                         960 / 16, 0x21 + (i % 5));
-    }
-
     return 0;
 }
 
+void term_putchar(int c) {
+    unsigned tex_x;
+    unsigned tex_y;
+
+    if (c >= ' ' && c <= '~') {
+        c -= ' ';
+    } else {
+        /* non printable char, use the special "placeholder" character
+           at the last position in the font. */
+        c = '~' - ' ' + 1;
+    }
+
+    tex_x = (c % 64) * FONT_WIDTH;
+    tex_y = (c / 64) * FONT_HEIGHT;
+
+    gpu_draw_rect_raw_texture_opaque(term_context.cursor_pos * (FONT_WIDTH + 1), 20,
+                                     FONT_WIDTH, FONT_HEIGHT,
+                                     tex_x, tex_y,
+                                     960 / 16, 0x27);
+
+    term_context.cursor_pos++;
+}
+
 void term_close(void) {
+    term_unhook_bios_puchar();
+
     if (term_context.char_buf) {
         bios_free(term_context.char_buf);
 
         memset(&term_context, 0, sizeof(term_context));
     }
+}
+
+static int (*term_bios_putchar)(int) = NULL;
+
+static int term_putchar_wrapper(int c) {
+    term_putchar(c);
+
+    if (term_bios_putchar) {
+        return term_bios_putchar(c);
+    }
+
+    return c;
+}
+
+void term_hook_bios_puchar(void) {
+    func_ptr_t *b0_table = bios_get_b0_table();
+
+    term_bios_putchar = (void*)b0_table[0x3d];
+
+    b0_table[0x3d] = (void*)term_putchar_wrapper;
+}
+
+void term_unhook_bios_puchar(void) {
+    func_ptr_t *b0_table;
+
+    if (term_bios_putchar == NULL) {
+        return;
+    }
+
+    b0_table = bios_get_b0_table();
+    b0_table[0x3d] = (void*)term_bios_putchar;
+
+    term_bios_putchar = NULL;
 }

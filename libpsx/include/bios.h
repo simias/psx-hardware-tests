@@ -11,4 +11,6 @@ void bios_gpu_sync(void);
 void *bios_malloc(size_t);
 void bios_free(void *);
 
+func_ptr_t *bios_get_b0_table(void);
+
 #endif /* _BIOS_H_ */

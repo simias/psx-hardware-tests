@@ -10,4 +10,9 @@ int term_init(enum gpu_xres xres,
 
 void term_close(void);
 
+void term_putchar(int c);
+
+void term_hook_bios_puchar(void);
+void term_unhook_bios_puchar(void);
+
 #endif /* _TERM_H_ */
