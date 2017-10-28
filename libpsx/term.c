@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "bios.h"
 #include "term.h"
 
 #define FONT_WIDTH  3
@@ -146,7 +147,37 @@ static void term_gpu_init(enum gpu_xres xres,
                     GPU_TEX_4BPP,
                     GPU_DITHER_DISABLED,
                     GPU_DRAW_TO_DISPLAY_AREA);
+
+    gpu_draw_rect_monochrome_opaque(0, 0,
+                                    width, height,
+                                    0, 0, 0);
 }
+
+struct term_char {
+    uint8_t c;
+    uint8_t style;
+};
+
+struct {
+    uint16_t width_px;
+    uint16_t height_px;
+    uint16_t width_char;
+    uint16_t height_char;
+
+    struct term_char *char_buf;
+    uint16_t buf_lines;
+    uint16_t cursor_pos;
+    uint16_t buf_start;
+    uint16_t buf_end;
+} term_context = {0};
+
+static const unsigned term_width[] = {
+    [GPU_XRES_256] = 256,
+    [GPU_XRES_320] = 320,
+    [GPU_XRES_368] = 368,
+    [GPU_XRES_512] = 512,
+    [GPU_XRES_640] = 640,
+};
 
 int term_init(enum gpu_xres xres,
                enum gpu_vmode vmode,
@@ -155,38 +186,43 @@ int term_init(enum gpu_xres xres,
 
     unsigned i = 0;
     const char *msg = "HELLO, WORLD! Emulation sure is fun.";
-    unsigned w = 0;
-    unsigned h = 240;
 
-    static const unsigned term_width[] = {
-        [GPU_XRES_256] = 256,
-        [GPU_XRES_320] = 320,
-        [GPU_XRES_368] = 368,
-        [GPU_XRES_512] = 512,
-        [GPU_XRES_640] = 640,
-    };
-
-    if (interlacing == GPU_INTERLACING_ENABLED) {
-        h *= 2;
-    }
+    term_close();
 
     if (xres > ARRAY_SIZE(term_width)) {
         bios_printf("%s: unknown xres: %d\n", __func__, xres);
         return -1;
     }
 
-    w = term_width[xres];
+    term_context.width_px = term_width[xres];
+    term_context.height_px = 240;
 
-    term_gpu_init(xres, vmode, interlacing, w, h);
+    if (interlacing == GPU_INTERLACING_ENABLED) {
+        term_context.height_px *= 2;
+    }
 
-    gpu_draw_rect_monochrome_opaque(0, 0,
-                                    256, 256,
-                                    0, 0, 0);
+    term_context.width_char = term_context.width_px / FONT_WIDTH;
+    term_context.height_char = term_context.height_px / FONT_HEIGHT;
 
-    /* gpu_draw_rect_raw_texture_opaque(0, 0, */
-    /*                                  192, 10, */
-    /*                                  0, 0, */
-    /*                                  960 / 16, 0x27); */
+    term_context.buf_lines = term_context.height_char + backbuffer_lines;
+
+    term_context.buf_start = term_context.buf_end = 0;
+
+    bios_printf("%s: malloc %lu\n", __func__, term_context.buf_lines *
+                                        term_context.width_char *
+                                        sizeof(*term_context.char_buf));
+
+    term_context.char_buf = bios_malloc(term_context.buf_lines *
+                                        term_context.width_char *
+                                        sizeof(*term_context.char_buf));
+
+    if (term_context.char_buf == NULL) {
+        bios_printf("%s: malloc failed\n", __func__);
+        return -1;
+    }
+
+    term_gpu_init(xres, vmode, interlacing,
+                  term_context.width_px, term_context.height_px);
 
     for (i = 0; msg[i]; i++) {
         char c = msg[i] - ' ';
@@ -202,4 +238,12 @@ int term_init(enum gpu_xres xres,
     }
 
     return 0;
+}
+
+void term_close(void) {
+    if (term_context.char_buf) {
+        bios_free(term_context.char_buf);
+
+        memset(&term_context, 0, sizeof(term_context));
+    }
 }

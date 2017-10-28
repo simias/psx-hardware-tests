@@ -12,6 +12,13 @@ __start:
 	sw    $fp, 16($sp)
 	move  $fp, $sp
 
+	/* Initialize the heap using the BIOS InitHeap function */
+	la   $a0, _end_of_program_data
+	la   $a1, _stack_bottom
+	subu $a1, $a1, $a0
+	jal  0xa0
+	li   $t1, 0x39
+
 	/* Jump into the program's main function */
 	jal main
 	nop

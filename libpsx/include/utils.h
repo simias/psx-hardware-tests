@@ -63,4 +63,7 @@ static inline void write8(size_t addr, uint8_t val) {
   *p = val;
 }
 
+#define memset __builtin_memset
+#define memcpy __builtin_memcpy
+
 #endif /* _UTILS_H_ */

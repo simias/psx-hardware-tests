@@ -30,4 +30,9 @@ SECTIONS
 		*(.bss*)
 		*(COMMON)
 	} > RAM
+
+	PROVIDE(_end_of_program_data = (. + 3) & ~ 3);
+
+	/* Use 4k for the stack */
+	PROVIDE(_stack_bottom = ORIGIN(RAM) + LENGTH(RAM) - 4096);
 }
