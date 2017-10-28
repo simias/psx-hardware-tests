@@ -1,15 +1,18 @@
 #include "utils.h"
 #include "term.h"
 
+#define FONT_WIDTH  3
+#define FONT_HEIGHT 5
+
 /* 4bpp 3x5 pixel font (texture size: 192 x 10, 480 16bit words) */
 const uint16_t font[(192 * 10) / 4] = {
-    0x0001, 0x0101, 0x1011, 0x1110, 0x1010, 0x0100, 0x1100, 0x0000,
+    0x0000, 0x0101, 0x1011, 0x1110, 0x1010, 0x0100, 0x1100, 0x0000,
     0x0000, 0x0000, 0x0000, 0x1000, 0x0111, 0x1101, 0x0110, 0x1101,
     0x1111, 0x1111, 0x1010, 0x0011, 0x0000, 0x0000, 0x0000, 0x1110,
-    0x0111, 0x1101, 0x1100, 0x1110, 0x1111, 0x1101, 0x1101, 0x0011,
+    0x0111, 0x1101, 0x1100, 0x1011, 0x1111, 0x1101, 0x1101, 0x0011,
     0x1011, 0x1001, 0x1110, 0x0100, 0x1111, 0x1111, 0x1111, 0x1111,
     0x0110, 0x1011, 0x1101, 0x1110, 0x0111, 0x0001, 0x1011, 0x0000,
-    0x0100, 0x0101, 0x1111, 0x0011, 0x0110, 0x0101, 0x0010, 0x0101,
+    0x0000, 0x0101, 0x1111, 0x0011, 0x0110, 0x0101, 0x0010, 0x0101,
     0x0101, 0x0000, 0x0000, 0x1000, 0x1101, 0x0001, 0x1001, 0x1101,
     0x0100, 0x1000, 0x1101, 0x1010, 0x0100, 0x1010, 0x1011, 0x1000,
     0x1101, 0x0110, 0x0011, 0x1101, 0x0100, 0x0010, 0x0101, 0x0001,
@@ -27,7 +30,7 @@ const uint16_t font[(192 * 10) / 4] = {
     0x1111, 0x0110, 0x0011, 0x1101, 0x0100, 0x1010, 0x0101, 0x0101,
     0x1011, 0x1001, 0x0110, 0x1011, 0x1001, 0x1111, 0x1000, 0x1010,
     0x0110, 0x1111, 0x0101, 0x0101, 0x0010, 0x0100, 0x0010, 0x0000,
-    0x0010, 0x0001, 0x1010, 0x1011, 0x1010, 0x0001, 0x1100, 0x0000,
+    0x0000, 0x0001, 0x1010, 0x1011, 0x1010, 0x0001, 0x1100, 0x0000,
     0x0000, 0x0001, 0x1000, 0x0010, 0x1111, 0x1111, 0x0111, 0x1100,
     0x1111, 0x0011, 0x1010, 0x0011, 0x0010, 0x0000, 0x0000, 0x0100,
     0x1111, 0x1010, 0x1101, 0x1011, 0x0111, 0x0100, 0x1101, 0x1111,
@@ -112,13 +115,16 @@ const uint16_t clut[] = {
     0x0000, RGB(255, 255, 255),
 };
 
-void term_init(unsigned long backbuffer_lines, enum gpu_vmode vmode) {
+static void term_gpu_init(enum gpu_xres xres,
+                          enum gpu_vmode vmode,
+                          enum gpu_interlacing interlacing,
+                          uint16_t width,
+                          uint16_t height) {
     gpu_reset();
 
-    gpu_set_video_mode(vmode, GPU_XRES_256, GPU_INTERLACING_DISABLED);
-    gpu_display_enable(true);
+    gpu_set_video_mode(vmode, xres, interlacing);
 
-    /* Texpage = f */
+
     gpu_upload_texture(960, 0,
                        48, 10,
                        font);
@@ -126,4 +132,74 @@ void term_init(unsigned long backbuffer_lines, enum gpu_vmode vmode) {
     gpu_upload_texture(960, 0x20,
                        2, 16,
                        clut);
+
+    gpu_clear_cache();
+
+    gpu_set_draw_area(0, 0, width, height);
+
+    gpu_set_draw_offset(0, 0);
+
+    gpu_display_enable(true);
+
+    gpu_set_texpage(960 / 64, 0,
+                    GPU_TRANSP_HALF_SRC_PLUS_HALF_DST,
+                    GPU_TEX_4BPP,
+                    GPU_DITHER_DISABLED,
+                    GPU_DRAW_TO_DISPLAY_AREA);
+}
+
+int term_init(enum gpu_xres xres,
+               enum gpu_vmode vmode,
+               enum gpu_interlacing interlacing,
+               unsigned long backbuffer_lines) {
+
+    unsigned i = 0;
+    const char *msg = "HELLO, WORLD! Emulation sure is fun.";
+    unsigned w = 0;
+    unsigned h = 240;
+
+    static const unsigned term_width[] = {
+        [GPU_XRES_256] = 256,
+        [GPU_XRES_320] = 320,
+        [GPU_XRES_368] = 368,
+        [GPU_XRES_512] = 512,
+        [GPU_XRES_640] = 640,
+    };
+
+    if (interlacing == GPU_INTERLACING_ENABLED) {
+        h *= 2;
+    }
+
+    if (xres > ARRAY_SIZE(term_width)) {
+        bios_printf("%s: unknown xres: %d\n", __func__, xres);
+        return -1;
+    }
+
+    w = term_width[xres];
+
+    term_gpu_init(xres, vmode, interlacing, w, h);
+
+    gpu_draw_rect_monochrome_opaque(0, 0,
+                                    256, 256,
+                                    0, 0, 0);
+
+    /* gpu_draw_rect_raw_texture_opaque(0, 0, */
+    /*                                  192, 10, */
+    /*                                  0, 0, */
+    /*                                  960 / 16, 0x27); */
+
+    for (i = 0; msg[i]; i++) {
+        char c = msg[i] - ' ';
+
+        unsigned tex_x = (c % 64) * 3;
+        unsigned tex_y = (c / 64) * 5;
+
+
+        gpu_draw_rect_raw_texture_opaque(i * 4, 20,
+                                         3, 5,
+                                         tex_x, tex_y,
+                                         960 / 16, 0x21 + (i % 5));
+    }
+
+    return 0;
 }

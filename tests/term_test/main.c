@@ -5,9 +5,9 @@
 int main() {
     unsigned i;
 
-    term_init(100, GPU_NTSC);
+    term_init(GPU_XRES_320, GPU_NTSC, GPU_INTERLACING_DISABLED, 100);
 
-    for (i = 0; i < 10000000; i++) {
+    for (i = 0; i < 100000000; i++) {
         nop();
     }
 
