@@ -153,6 +153,12 @@ static void term_gpu_init(enum gpu_xres xres,
                                     0, 0, 0);
 }
 
+enum term_ansi_parser_state {
+    TERM_ANSI_NO_CODE = 0,
+    TERM_ANSI_HAS_ESC,
+    TERM_ANSI_HAS_CARRET,
+};
+
 struct term_char {
     uint8_t c;
     uint8_t style;
@@ -170,7 +176,16 @@ struct {
     uint16_t buf_start;
     uint16_t buf_end;
     uint8_t  cur_style;
+
+    enum term_ansi_parser_state ansi_parser_state;
+    uint8_t ansi_parser_temp;
 } term_context = {0};
+
+/* Black bg, white fg */
+#define TERM_STYLE_DEFAULT  0x07U
+#define TERM_STYLE_BOLD_BIT 0x08U
+#define TERM_STYLE_FG_MASK  0x07U
+#define TERM_STYLE_BG_MASK  0x70U
 
 static const unsigned term_width[] = {
     [GPU_XRES_256] = 256,
@@ -201,12 +216,16 @@ int term_init(enum gpu_xres xres,
         term_context.height_px *= 2;
     }
 
+    term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
+
     term_context.width_char = term_context.width_px / FONT_WIDTH;
     term_context.height_char = term_context.height_px / FONT_HEIGHT;
 
     term_context.buf_lines = term_context.height_char + backbuffer_lines;
 
     term_context.buf_start = term_context.buf_end = 0;
+
+    term_context.cur_style = TERM_STYLE_DEFAULT;
 
     buf_len = term_context.buf_lines * term_context.width_char;
     buf_len *= sizeof(*term_context.char_buf);
@@ -227,9 +246,78 @@ int term_init(enum gpu_xres xres,
     return 0;
 }
 
+/* Handles the ANSI code parsing state machine. Returns true if the
+   character is part of a code and shouldn't be displayed */
+int term_parse_ansi_code(int c) {
+    switch (term_context.ansi_parser_state) {
+    case TERM_ANSI_NO_CODE:
+        if (c == 0x1b) {
+            term_context.ansi_parser_state = TERM_ANSI_HAS_ESC;
+            return 1;
+        }
+        return 0;
+
+    case TERM_ANSI_HAS_ESC:
+        if (c == '[') {
+            term_context.ansi_parser_state = TERM_ANSI_HAS_CARRET;
+            term_context.ansi_parser_temp = 0;
+            return 1;
+        } else {
+            term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
+            return 0;
+        }
+    case TERM_ANSI_HAS_CARRET:
+        if (c >= '0' && c <= '9') {
+            term_context.ansi_parser_temp *= 10;
+            term_context.ansi_parser_temp += c - '0';
+            return 1;
+        }
+
+        if (c == ';' || c == 'm') {
+            uint8_t tmp = term_context.ansi_parser_temp;
+
+            if (tmp == 0) {
+                /* Reset */
+                term_context.cur_style = TERM_STYLE_DEFAULT;
+            } else if (tmp == 1) {
+                /* Set "bright" or "bold" */
+                term_context.cur_style |= TERM_STYLE_BOLD_BIT;
+            } else if (tmp >= 30 && tmp <= 37) {
+                /* Foreground color */
+                term_context.cur_style &= ~TERM_STYLE_FG_MASK;
+                term_context.cur_style |= tmp - 30;
+            } else if (tmp >= 40 && tmp <= 47) {
+                /* Background color */
+                term_context.cur_style &= ~TERM_STYLE_BG_MASK;
+                term_context.cur_style |= (tmp - 40) << 4;
+            }
+
+            term_context.ansi_parser_temp = 0;
+
+            if (c == 'm') {
+                /* End of code */
+                term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
+            }
+
+            return 1;
+        }
+
+        /* Unknown code */
+        term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
+        return 0;
+    }
+
+    return 0;
+}
+
 void term_putchar(int c) {
     unsigned tex_x;
     unsigned tex_y;
+    unsigned fg_clut;
+
+    if (term_parse_ansi_code(c)) {
+        return;
+    }
 
     if (c >= ' ' && c <= '~') {
         c -= ' ';
@@ -242,10 +330,17 @@ void term_putchar(int c) {
     tex_x = (c % 64) * FONT_WIDTH;
     tex_y = (c / 64) * FONT_HEIGHT;
 
+    fg_clut = 0x20;
+    fg_clut += term_context.cur_style & TERM_STYLE_FG_MASK;
+
+    if (term_context.cur_style & TERM_STYLE_BOLD_BIT) {
+        fg_clut += 8;
+    }
+
     gpu_draw_rect_raw_texture_opaque(term_context.cursor_pos * (FONT_WIDTH + 1), 20,
                                      FONT_WIDTH, FONT_HEIGHT,
                                      tex_x, tex_y,
-                                     960 / 16, 0x27);
+                                     960 / 16, fg_clut);
 
     term_context.cursor_pos++;
 }
