@@ -9,9 +9,9 @@ int main() {
 
     term_hook_bios_puchar();
 
-    bios_printf("Hello \x1b[32mterm\x1b[0m\n");
+    bios_printf("Hello \x1b[32;41mterm\x1b[0m\n");
 
-    for (i = 0; i < 100000000; i++) {
+    for (i = 0; i < 20000000; i++) {
         nop();
     }
 

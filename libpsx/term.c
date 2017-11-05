@@ -77,10 +77,7 @@ const uint16_t font[(192 * 10) / 4] = {
 /* 2 x 16 texture containing 2bit CLUTs for each of the 16 ANSI
    colors. The first entry (background color) is always fully
    transparent. */
-const uint16_t clut[] = {
-    /* 0x8000, 0xffff, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, */
-    /* 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, 0x8000, */
-
+static const uint16_t clut[] = {
     /* Black */
     0x0000, RGB(0, 0, 0),
     /* Red */
@@ -115,6 +112,28 @@ const uint16_t clut[] = {
     /* Bright White */
     0x0000, RGB(255, 255, 255),
 };
+#undef RGB
+
+#define RGB(_r, _g, _b) ((_r) | (_g) << 8 | (_b) << 16)
+static const uint32_t bg_color[] = {
+    /* Black */
+    RGB(0, 0, 0),
+    /* Red */
+    RGB(170, 0, 0),
+    /* Green */
+    RGB(0, 170, 0),
+    /* Yellow */
+    RGB(170, 85, 0),
+    /* Blue */
+    RGB(0, 0, 170),
+    /* Magenta */
+    RGB(170, 0, 170),
+    /* Cyan */
+    RGB(0, 170, 170),
+    /* White */
+    RGB(170, 170, 170),
+};
+#undef RGB
 
 static void term_gpu_init(enum gpu_xres xres,
                           enum gpu_vmode vmode,
@@ -274,22 +293,22 @@ int term_parse_ansi_code(int c) {
         }
 
         if (c == ';' || c == 'm') {
-            uint8_t tmp = term_context.ansi_parser_temp;
+            uint8_t code = term_context.ansi_parser_temp;
 
-            if (tmp == 0) {
+            if (code == 0) {
                 /* Reset */
                 term_context.cur_style = TERM_STYLE_DEFAULT;
-            } else if (tmp == 1) {
+            } else if (code == 1) {
                 /* Set "bright" or "bold" */
                 term_context.cur_style |= TERM_STYLE_BOLD_BIT;
-            } else if (tmp >= 30 && tmp <= 37) {
+            } else if (code >= 30 && code <= 37) {
                 /* Foreground color */
                 term_context.cur_style &= ~TERM_STYLE_FG_MASK;
-                term_context.cur_style |= tmp - 30;
-            } else if (tmp >= 40 && tmp <= 47) {
+                term_context.cur_style |= code - 30;
+            } else if (code >= 40 && code <= 47) {
                 /* Background color */
                 term_context.cur_style &= ~TERM_STYLE_BG_MASK;
-                term_context.cur_style |= (tmp - 40) << 4;
+                term_context.cur_style |= (code - 40) << 4;
             }
 
             term_context.ansi_parser_temp = 0;
@@ -313,7 +332,10 @@ int term_parse_ansi_code(int c) {
 void term_putchar(int c) {
     unsigned tex_x;
     unsigned tex_y;
+    unsigned x;
+    unsigned y;
     unsigned fg_clut;
+    uint32_t bg_col;
 
     if (term_parse_ansi_code(c)) {
         return;
@@ -337,7 +359,18 @@ void term_putchar(int c) {
         fg_clut += 8;
     }
 
-    gpu_draw_rect_raw_texture_opaque(term_context.cursor_pos * (FONT_WIDTH + 1), 20,
+    bg_col = bg_color[(term_context.cur_style & TERM_STYLE_BG_MASK) >> 4];
+
+    x = term_context.cursor_pos * (FONT_WIDTH + 1);
+    y = 20;
+
+    gpu_draw_rect_monochrome_opaque(x, y,
+                                    FONT_WIDTH + 1, FONT_HEIGHT,
+                                    bg_col & 0xff,
+                                    (bg_col >> 8) & 0xff,
+                                    (bg_col >> 16) & 0xff);
+
+    gpu_draw_rect_raw_texture_opaque(x, y,
                                      FONT_WIDTH, FONT_HEIGHT,
                                      tex_x, tex_y,
                                      960 / 16, fg_clut);
