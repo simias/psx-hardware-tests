@@ -50,7 +50,6 @@ uint8_t send_byte(uint8_t byte, bool expect_ack) {
 
   bios_printf("Got ack\n");
 
-
   r = joy_mc_wait_for_rx();
 
   bios_printf("Rx: %02x\n", r);
@@ -80,29 +79,9 @@ int main() {
 
   delay();
 
-  joy_mc_set_ctrl(0x0002);
-
-  delay();
-
-  joy_mc_set_ctrl(0x2002);
-
-  delay();
-
-  joy_mc_set_ctrl(0x0000);
-
-  delay();
-
-  joy_mc_set_ctrl(0x1003);
-
-
-  joy_mc_rx();
-
-  //joy_mc_txen(true);
-
-
   for (i = 0; i < nbytes; i++) {
-    //send_byte(command[i], i < (nbytes - 1));
-    send_byte(command[i], false);
+      send_byte(command[i], i < (nbytes - 1));
+      //send_byte(command[i], false);
   }
 
   return 0;

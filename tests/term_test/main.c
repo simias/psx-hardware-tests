@@ -5,7 +5,7 @@
 int main() {
     unsigned i;
 
-    term_init(GPU_XRES_320, GPU_NTSC, GPU_INTERLACING_DISABLED, 100);
+    term_init(GPU_XRES_256, GPU_NTSC, GPU_INTERLACING_DISABLED, 100);
 
     term_hook_bios_puchar();
 

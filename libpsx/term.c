@@ -179,25 +179,41 @@ enum term_ansi_parser_state {
 };
 
 struct term_char {
+    /* The character itself (ASCII representation). *Must* be a
+       printable character or \0 if the character is blank. */
     uint8_t c;
+    /* Style associated with this character. */
     uint8_t style;
 };
 
 struct {
+    /* Width of the terminal in number of pixels */
     uint16_t width_px;
+    /* Height of the terminal in number of pixels */
     uint16_t height_px;
+    /* Width of the terminal in number of characters */
     uint16_t width_char;
-    uint16_t height_char;
+    /* Height of the terminal in number of lines */
+    uint16_t height_line;
 
+    /* Circular buffer holding the entire contents of the terminal (displayed
+       lines + backbuffer) */
     struct term_char *char_buf;
+    /* Total number of lines in the buffer (displayed + back buffer) */
     uint16_t buf_lines;
-    uint16_t cursor_pos;
-    uint16_t buf_start;
-    uint16_t buf_end;
+    /* Cursor position on the last line of the buffer */
+    uint16_t cursor_column;
+    /* One past the index of the first (oldest) line in the buffer */
+    uint16_t buf_start_line;
+    /* Index of the last (newest) line in the buffer*/
+    uint16_t buf_end_line;
+    /* Current draw style (color, bolded etc...). Updated when
+       encountering ANSI escape sequences in the character stream. */
     uint8_t  cur_style;
-
+    /* State machine for the ANSI escape sequence parser */
     enum term_ansi_parser_state ansi_parser_state;
-    uint8_t ansi_parser_temp;
+    /* Accumulator variable used by the ANSI parser state machine */
+    uint8_t ansi_parser_acc;
 } term_context = {0};
 
 /* Black bg, white fg */
@@ -238,11 +254,11 @@ int term_init(enum gpu_xres xres,
     term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
 
     term_context.width_char = term_context.width_px / FONT_WIDTH;
-    term_context.height_char = term_context.height_px / FONT_HEIGHT;
+    term_context.height_line = term_context.height_px / FONT_HEIGHT;
 
-    term_context.buf_lines = term_context.height_char + backbuffer_lines;
+    term_context.buf_lines = term_context.height_line + backbuffer_lines;
 
-    term_context.buf_start = term_context.buf_end = 0;
+    term_context.buf_start_line = term_context.buf_end_line = 0;
 
     term_context.cur_style = TERM_STYLE_DEFAULT;
 
@@ -254,7 +270,6 @@ int term_init(enum gpu_xres xres,
     if (term_context.char_buf == NULL) {
         bios_printf("%s: malloc failed\n", __func__);
         return -1;
-
     }
 
     memset(term_context.char_buf, 0, buf_len);
@@ -279,7 +294,7 @@ int term_parse_ansi_code(int c) {
     case TERM_ANSI_HAS_ESC:
         if (c == '[') {
             term_context.ansi_parser_state = TERM_ANSI_HAS_CARRET;
-            term_context.ansi_parser_temp = 0;
+            term_context.ansi_parser_acc = 0;
             return 1;
         } else {
             term_context.ansi_parser_state = TERM_ANSI_NO_CODE;
@@ -287,13 +302,13 @@ int term_parse_ansi_code(int c) {
         }
     case TERM_ANSI_HAS_CARRET:
         if (c >= '0' && c <= '9') {
-            term_context.ansi_parser_temp *= 10;
-            term_context.ansi_parser_temp += c - '0';
+            term_context.ansi_parser_acc *= 10;
+            term_context.ansi_parser_acc += c - '0';
             return 1;
         }
 
         if (c == ';' || c == 'm') {
-            uint8_t code = term_context.ansi_parser_temp;
+            uint8_t code = term_context.ansi_parser_acc;
 
             if (code == 0) {
                 /* Reset */
@@ -311,7 +326,7 @@ int term_parse_ansi_code(int c) {
                 term_context.cur_style |= (code - 40) << 4;
             }
 
-            term_context.ansi_parser_temp = 0;
+            term_context.ansi_parser_acc = 0;
 
             if (c == 'm') {
                 /* End of code */
@@ -329,17 +344,94 @@ int term_parse_ansi_code(int c) {
     return 0;
 }
 
+/* Returns a pointer to the char at the current cursor position
+   (i.e. the one that will be written to next) */
+static struct term_char *term_char_at_cursor(void) {
+    unsigned pos = term_context.buf_end_line * term_context.width_char;
+
+    pos += term_context.cursor_column;
+
+    return &term_context.char_buf[pos];
+}
+
 void term_putchar(int c) {
+    struct term_char *tc;
+
+    if (term_parse_ansi_code(c)) {
+        /* This was part of an ASCII escape sequence, we don't have
+           anything to display */
+        return;
+    }
+
+    if (c == '\n') {
+        term_newline();
+        return;
+    }
+
+    if (c >= ' ' && c <= '~') {
+        /* Non printable character */
+        return;
+    }
+
+    tc = term_char_at_cursor();
+    tc->style = term_context->cur_style;
+    tc->c = c;
+
+    /* Move the cursor */
+    if ((term_context.cursor_column + 1) >= term_context.width_char) {
+        /* cursor reached the end of the line, move to the next one. */
+        term_newline();
+    } else {
+        /* We're still on the same line. We can just draw the
+           new character where it belongs and we're done. */
+        draw_char_at_cursor();
+
+        term_context.cursor_column++;
+    }
+}
+
+/* Move to a new empty line. */
+void term_newline(void) {
+    struct term_char *tc;
+
+    term->buf_end_line++;
+    term->cursor_column = 0;
+
+    /* Clear the new line */
+    tc = term_char_at_cursor();
+    memset(tc, 0, term_context.width_char * sizeof(struct term_char));
+
+    /* Redraw the entire screen. We could optimize this by copying the
+       existing screen upwards and only drawing a blank line at the
+       bottom. */
+    term_redraw_screen();
+}
+
+/* Redraw the entire screen */
+void term_redraw_screen(void) {
+    /* I expect that most of the time there'll be a lot of blank space
+       on the screen (partially written lines, spaces etc...) so I
+       start by clearing the entire screen in a single command and
+       then I'll just skip over whitespace. */
+    gpu_draw_rect_monochrome_opaque(0, 0,
+                                    term_context.width_px,
+                                    term_context.height_px,
+                                    0, 0, 0);
+
+    for (uint16_t screen_y = 0;
+         screen_y < term_context.height_line;
+         screen_y++) {
+        
+    }
+}
+
+void term_display_char(struct term_char tc, uint16_t screen_x, uint16_t screen_y) {
     unsigned tex_x;
     unsigned tex_y;
     unsigned x;
     unsigned y;
     unsigned fg_clut;
     uint32_t bg_col;
-
-    if (term_parse_ansi_code(c)) {
-        return;
-    }
 
     if (c >= ' ' && c <= '~') {
         c -= ' ';
@@ -374,8 +466,6 @@ void term_putchar(int c) {
                                      FONT_WIDTH, FONT_HEIGHT,
                                      tex_x, tex_y,
                                      960 / 16, fg_clut);
-
-    term_context.cursor_pos++;
 }
 
 void term_close(void) {
