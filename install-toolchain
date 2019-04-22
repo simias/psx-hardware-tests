@@ -1,0 +1,151 @@
+#!/bin/sh
+
+BINUTILS_VERSION=2.32
+GCC_VERSION=8.3.0
+GDB_VERSION=8.2
+
+MAKE_FLAGS='-j4'
+
+col_info=''
+col_warn=''
+col_error=''
+col_rst=''
+
+# Enable colors if stdout is a tty
+if [ -t 1 ]
+then
+    col_info=$(tput setaf 4)
+    col_warn=$(tput setaf 3)
+    col_error=$(tput setaf 1)
+    col_rst=$(tput sgr0)
+fi
+
+error() {
+    echo "${col_error}Error: $@${col_rst}" >&2
+}
+
+log() {
+    echo "${col_info}$@${col_rst}" >&2
+}
+
+usage() {
+    echo "Usage:" >&2
+    echo "  $0 <target> all" >&2
+    echo "  $0 <target> <component> [<component> [...]]" >&2
+    echo >&2
+    echo "Targets:     psx" >&2
+    echo "Components:  binutils gcc gdb" >&2
+    exit 1
+}
+
+for param
+do
+    case "$param" in
+	psx)
+	    prefix=/opt/psx-tools
+	    triplet='mipsel-unknown-elf'
+	    ;;
+	all)
+	    build_binutils=1
+	    build_gcc=1
+	    build_gdb=1
+	    ;;
+	binutils)
+	    build_binutils=1
+	    ;;
+	gcc)
+	    build_gcc=1
+	    ;;
+	gdb)
+	    build_gdb=1
+	    ;;
+	*)
+	    usage
+    esac
+done
+
+if [ "$triplet" = "" ]
+then
+    usage
+fi
+
+if [ "$build_binutils$build_gcc$build_gdb" = "" ]
+then
+    usage
+fi
+
+workdir=$(mktemp -d ${TMPDIR:-/tmp}/toolchain-XXXXXX )
+
+if [ "$build_binutils" = 1 ]
+then
+    log "Work dir is $workdir"
+
+    log "Building binutils..."
+
+    mkdir "$workdir/binutils" || exit $?
+
+    wget -O - "http://ftp.gnu.org/gnu/binutils/binutils-$BI" \
+	| unxz | tar x -C "$workdir/binutils" || exit $?
+
+
+    mkdir "$workdir/binutils-build" || exit $?
+    cd "$workdir/binutils-build" || exit $?
+
+    "$workdir/binutils/binutils-$BINUTILS_VERSION/configure" \
+	--target="$triplet" --prefix="$prefix" \
+	--with-float=soft --enable-softfloat
+
+    make $MAKE_FLAGS || exit $?
+    sudo make install || exit $?
+
+    log "Binutils installed successfully"
+fi
+
+if [ "$build_gcc" = 1 ]
+then
+
+    log "Building GCC..."
+
+    mkdir "$workdir/gcc" || exit $?
+
+    wget -O - "http://ftp.gnu.org/gnu/gcc/gcc-$GCC_VERSION/gcc-$GCC_VERSION.tar.xz" \
+	| unxz | tar x -C "$workdir/gcc" || exit $?
+
+
+    mkdir "$workdir/gcc-build" || exit $?
+    cd "$workdir/gcc-build" || exit $?
+
+    "$workdir/gcc/gcc-$GCC_VERSION/configure" \
+	--target="$triplet" --prefix="$prefix" \
+	--with-float=soft --enable-softfloat \
+	--disable-libada --disable-libssp \
+	--enable-languages=c
+
+    make $MAKE_FLAGS || exit $?
+    sudo make install || exit $?
+
+    log "GCC installed successfully"
+fi
+
+if [ "$build_gdb" = 1 ]
+then
+
+    log "Building GDB..."
+
+    mkdir "$workdir/gdb" || exit $?
+
+    wget -O - "http://ftp.gnu.org/gnu/gdb/gdb-$GDB_VERSION.tar.xz" \
+	| unxz | tar x -C "$workdir/gdb" || exit $?
+
+    mkdir "$workdir/gdb-build" || exit $?
+    cd "$workdir/gdb-build" || exit $?
+
+    "$workdir/gdb/gdb-$GDB_VERSION/configure" \
+	--target="$triplet" --prefix="$prefix" \
+	--with-float=soft --enable-softfloat
+
+    make $MAKE_FLAGS || exit $?
+    sudo make install || exit $?
+
+    log "GDB installed successfully"
+fi
