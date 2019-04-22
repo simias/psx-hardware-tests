@@ -3,34 +3,6 @@
 #include "irq.h"
 #include "joy_mc.h"
 
-/*
- * Get Memory Card ID Command
- *
- * Send Reply Comment
- * 81h  N/A   Memory Card Access (unlike 01h=Controller access), dummy response
- * 53h  FLAG  Send Get ID Command (ASCII "S"), Receive FLAG Byte
- * 00h  5Ah   Receive Memory Card ID1
- * 00h  5Dh   Receive Memory Card ID2
- * 00h  5Ch   Receive Command Acknowledge 1
- * 00h  5Dh   Receive Command Acknowledge 2
- * 00h  04h   Receive 04h
- * 00h  00h   Receive 00h
- * 00h  00h   Receive 00h
- * 00h  80h   Receive 80h
- */
-static const uint8_t command[] = {
-  0x81,
-  0x53,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-  0x00,
-};
-
 void delay(void) {
   int i;
 
@@ -43,28 +15,21 @@ void delay(void) {
 uint8_t send_byte(uint8_t byte, bool expect_ack) {
   uint8_t r;
 
-  bios_printf("Send %02x\n", byte);
-
   joy_mc_tx(byte);
 
   joy_mc_set_ctrl(0x1013);
 
   if (expect_ack) {
     joy_mc_wait_for_ack();
-
-    bios_printf("Got ack\n");
   }
 
   r = joy_mc_wait_for_rx();
-
-  bios_printf("Rx: %02x\n", r);
 
   return r;
 }
 
 int main() {
-  unsigned nbytes = ARRAY_SIZE(command);
-  unsigned i;
+  unsigned block;
 
   bios_printf("Attempt to read kernel from PocketStation in slot 1\n");
 
@@ -82,11 +47,37 @@ int main() {
 
   joy_mc_rx();
 
-  //joy_mc_txen(true);
+  /* We read 16k as 128 * 128B */
+  for (block = 0; block < 128; block++) {
+    uint32_t addr = 0x04000000UL + block * 128;
+    unsigned i;
+
+    joy_mc_set_ctrl(0x1003);
+    delay();
+
+    joy_mc_set_ctrl(0x0000);
+    delay();
 
 
-  for (i = 0; i < nbytes; i++) {
-    send_byte(command[i], i < (nbytes - 1));
+    send_byte(0x81, true); /* Memory card access */
+    send_byte(0x5b, true); /* Execute function and transfer data */
+    send_byte(0x01, true); /* Function Get or Set memory block */
+    send_byte(0x00, true); /* Get params (5) */
+
+    send_byte(addr,       true); /* Addr [7:0]   */
+    send_byte(addr >> 8,  true); /* Addr [15:8]  */
+    send_byte(addr >> 16, true); /* Addr [23:16] */
+    send_byte(addr >> 24, true); /* Addr [32:24] */
+    send_byte(0x80, true);       /* Len: 128 */
+
+    send_byte(0x00, true); /* Get len (0x80) */
+
+    for (i = 0; i < 0x80; i++) {
+      uint8_t b = send_byte(0x00, i < 0x7f);
+
+      bios_printf("%02x", b);
+    }
+    bios_printf("\n");
   }
 
   return 0;
