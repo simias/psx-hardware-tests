@@ -33,7 +33,7 @@ usage() {
     echo "  $0 <target> all" >&2
     echo "  $0 <target> <component> [<component> [...]]" >&2
     echo >&2
-    echo "Targets:     psx" >&2
+    echo "Targets:     playstation pocketstation" >&2
     echo "Components:  binutils gcc gdb" >&2
     exit 1
 }
@@ -41,9 +41,13 @@ usage() {
 for param
 do
     case "$param" in
-	psx)
+	playstation)
 	    prefix=/opt/psx-tools
 	    triplet='mipsel-unknown-elf'
+	    ;;
+	pocketstation)
+	    prefix=/opt/pksx-tools
+	    triplet='arm-none-eabi'
 	    ;;
 	all)
 	    build_binutils=1
@@ -84,7 +88,7 @@ then
 
     mkdir "$workdir/binutils" || exit $?
 
-    wget -O - "http://ftp.gnu.org/gnu/binutils/binutils-$BI" \
+    wget -O - "http://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS_VERSION.tar.xz" \
 	| unxz | tar x -C "$workdir/binutils" || exit $?
 
 
