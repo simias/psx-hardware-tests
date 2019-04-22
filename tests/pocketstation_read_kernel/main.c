@@ -23,8 +23,13 @@ static const uint8_t command[] = {
   0x53,
   0x00,
   0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
+  0x00,
 };
-
 
 void delay(void) {
   int i;
@@ -46,10 +51,9 @@ uint8_t send_byte(uint8_t byte, bool expect_ack) {
 
   if (expect_ack) {
     joy_mc_wait_for_ack();
+
+    bios_printf("Got ack\n");
   }
-
-  bios_printf("Got ack\n");
-
 
   r = joy_mc_wait_for_rx();
 
@@ -62,7 +66,7 @@ int main() {
   unsigned nbytes = ARRAY_SIZE(command);
   unsigned i;
 
-  bios_printf("Attemps to read kernel from PocketStation in slot 1\n");
+  bios_printf("Attempt to read kernel from PocketStation in slot 1\n");
 
   /* Mask all interrupts */
   irq_set_mask(0);
@@ -73,27 +77,8 @@ int main() {
 
   joy_mc_set_mode(0x000d);
 
-  /* Enable Ack IRQ */
-  //joy_mc_set_ctrl(0x1000);
-
   joy_mc_set_ctrl(0x0000);
-
   delay();
-
-  joy_mc_set_ctrl(0x0002);
-
-  delay();
-
-  joy_mc_set_ctrl(0x2002);
-
-  delay();
-
-  joy_mc_set_ctrl(0x0000);
-
-  delay();
-
-  joy_mc_set_ctrl(0x1003);
-
 
   joy_mc_rx();
 
@@ -101,8 +86,7 @@ int main() {
 
 
   for (i = 0; i < nbytes; i++) {
-    //send_byte(command[i], i < (nbytes - 1));
-    send_byte(command[i], false);
+    send_byte(command[i], i < (nbytes - 1));
   }
 
   return 0;
