@@ -194,3 +194,10 @@ const struct pksx_executable_header _pksx_header_  = {
   .pksx_start = _start,
   .icon_palette = { 0x0000, 0x001f, 0x03e0, 0x7c00 },
 };
+
+extern struct pksx_callback_ret *func_80(uint32_t flags, uint8_t *data);
+
+/* __attribute__ ((section (".header.fn_table"))) */
+/* struct pksx_callback_entry _pksx_fn_table[10] = { */
+/*   { .expected_params = 0, .cback = func_80 }, */
+/* }; */

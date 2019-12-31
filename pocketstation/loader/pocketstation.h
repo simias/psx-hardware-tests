@@ -46,6 +46,22 @@ struct pksx_mono_icon_desc {
   const uint32_t *data;
 };
 
+struct pksx_callback_ret {
+  /* Buffer containing the data sent to the PlayStation and
+   * overwritten with the data received from the PlayStation (since
+   * the communication is full duplex) */
+  uint8_t *data;
+  /* size of data, max 128B */
+  uint32_t data_len;
+};
+
+struct pksx_callback_entry {
+  /* Number of parameters bytes expected when calling this
+   * function. Max 128B */
+  uint32_t expected_params;
+  struct pksx_callback_ret *(*cback)(uint32_t flags, uint8_t *data);
+};
+
 void pksx_exit(void);
 void pksx_reset(void);
 
